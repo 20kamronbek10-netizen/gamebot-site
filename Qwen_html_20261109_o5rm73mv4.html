@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GameBot — Играй и выигрывай</title>
+<!-- Telegram Web App SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+    }
+    
+    :root {
+        --primary: #7c3aed;
+        --secondary: #ec4899;
+        --accent: #06b6d4;
+        --dark: #0f0f1e;
+        --darker: #070713;
+        --card: rgba(255, 255, 255, 0.05);
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #e2e8f0;
+        --text-dim: #94a3b8;
+    }
+    
+    html { scroll-behavior: smooth; }
+    
+    body {
+        background: var(--darker);
+        color: var(--text);
+        overflow-x: hidden;
+        line-height: 1.6;
+        padding-bottom: 100px; /* место для кнопки Telegram */
+    }
+    
+    /* Анимированный фон */
+    .bg-animation {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        background: 
+            radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.25) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.15) 0%, transparent 60%),
+            var(--darker);
+    }
+    
+    .stars {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        pointer-events: none;
+    }
+    
+    .star {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        animation: twinkle 3s infinite;
+    }
+    
+    @keyframes twinkle {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.5); }
+    }
+    
+    /* Hero секция */
+    .hero {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 60px 5% 50px;
+    }
+    
+    .hero-content {
+        max-width: 900px;
+        animation: fadeUp 1s ease;
+    }
+    
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 8px 20px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 50px;
+        font-size: 0.9rem;
+        color: var(--accent);
+        margin-bottom: 30px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .hero h1 {
+        font-size: clamp(2rem, 6vw, 4rem);
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 25px;
+        background: linear-gradient(135deg, #fff 0%, #a78bfa 50%, #ec4899 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .hero p {
+        font-size: 1.1rem;
+        color: var(--text-dim);
+        margin-bottom: 40px;
+    }
+    
+    /* Секции */
+    section {
+        padding: 60px 5%;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .section-title {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    .section-title h2 {
+        font-size: clamp(1.8rem, 4vw, 2.5rem);
+        font-weight: 800;
+        margin-bottom: 15px;
+        background: linear-gradient(135deg, #fff, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .section-title p {
+        color: var(--text-dim);
+        font-size: 1rem;
+    }
+    
+    /* Игры */
+    .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    
+    .game-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 30px 25px;
+        backdrop-filter: blur(20px);
+        transition: all 0.4s;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .game-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+        box-shadow: 0 20px 60px rgba(124, 58, 237, 0.3);
+    }
+    
+    .game-icon {
+        font-size: 3.5rem;
+        margin-bottom: 15px;
+        display: block;
+    }
+    
+    .game-card h3 {
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+        color: white;
+    }
+    
+    .game-card p {
+        color: var(--text-dim);
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    .game-tag {
+        display: inline-block;
+        padding: 5px 12px;
+        background: rgba(124, 58, 237, 0.2);
+        border: 1px solid rgba(124, 58, 237, 0.3);
+        border-radius: 20px;
+        font-size: 0.8rem;
+        color: #c4b5fd;
+    }
+    
+    /* Фичи */
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    .feature {
+        display: flex;
+        gap: 15px;
+        padding: 25px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        backdrop-filter: blur(20px);
+    }
+    
+    .feature-icon {
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+    
+    .feature h3 {
+        font-size: 1.1rem;
+        margin-bottom: 6px;
+        color: white;
+    }
+    
+    .feature p {
+        color: var(--text-dim);
+        font-size: 0.9rem;
+    }
+    
+    /* Шаги */
+    .steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+    }
+    
+    .step {
+        text-align: center;
+        padding: 30px 20px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        backdrop-filter: blur(20px);
+    }
+    
+    .step-num {
+        width: 55px;
+        height: 55px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        font-weight: 800;
+        margin: 0 auto 15px;
+        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.4);
+    }
+    
+    .step h3 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+        color: white;
+    }
+    
+    .step p {
+        color: var(--text-dim);
+        font-size: 0.9rem;
+    }
+    
+    /* CTA */
+    .cta {
+        text-align: center;
+        padding: 60px 5%;
+        background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(236, 72, 153, 0.15));
+        border: 1px solid var(--border);
+        border-radius: 30px;
+        margin: 40px auto;
+        max-width: 1000px;
+        backdrop-filter: blur(20px);
+    }
+    
+    .cta h2 {
+        font-size: clamp(1.8rem, 4vw, 2.5rem);
+        margin-bottom: 15px;
+        background: linear-gradient(135deg, #fff, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .cta p {
+        color: var(--text-dim);
+        font-size: 1rem;
+        margin-bottom: 25px;
+    }
+    
+    /* FAQ */
+    .faq-list {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .faq-item {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        backdrop-filter: blur(20px);
+    }
+    
+    .faq-q {
+        padding: 18px 22px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        color: white;
+    }
+    
+    .faq-q::after {
+        content: '+';
+        font-size: 1.5rem;
+        color: var(--primary);
+        transition: transform 0.3s;
+    }
+    
+    .faq-item.active .faq-q::after { transform: rotate(45deg); }
+    
+    .faq-a {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s, padding 0.4s;
+        color: var(--text-dim);
+        padding: 0 22px;
+    }
+    
+    .faq-item.active .faq-a {
+        max-height: 300px;
+        padding: 0 22px 18px;
+    }
+    
+    /* Footer */
+    footer {
+        padding: 30px 5%;
+        border-top: 1px solid var(--border);
+        text-align: center;
+    }
+    
+    .copyright {
+        color: var(--text-dim);
+        font-size: 0.85rem;
+    }
+</style>
+</head>
+<body>
+
+<div class="bg-animation"></div>
+<div class="stars" id="stars"></div>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="badge">✨ Telegram Mini App</div>
+        <h1>Играй, побеждай, зарабатывай</h1>
+        <p>Камень-ножницы-бумага, крестики-нолики, кости и мины. Играй с друзьями или случайными соперниками!</p>
+    </div>
+</section>
+
+<!-- Игры -->
+<section id="games">
+    <div class="section-title">
+        <h2>🎯 Наши игры</h2>
+        <p>Выбирай любимую игру и начинай побеждать</p>
+    </div>
+    <div class="games-grid">
+        <div class="game-card">
+            <span class="game-icon">✊</span>
+            <h3>Камень-ножницы-бумага</h3>
+            <p>Классика в новом формате. Играй до 10 побед!</p>
+            <span class="game-tag">🎲 До 10 побед</span>
+        </div>
+        <div class="game-card">
+            <span class="game-icon">❌</span>
+            <h3>Крестики-нолики</h3>
+            <p>Стратегическая игра против друга или бота.</p>
+            <span class="game-tag">🧠 Стратегия</span>
+        </div>
+        <div class="game-card">
+            <span class="game-icon">🎲</span>
+            <h3>Кости</h3>
+            <p>Испытай удачу в игре на кубиках.</p>
+            <span class="game-tag">🍀 Удача</span>
+        </div>
+        <div class="game-card">
+            <span class="game-icon">💣</span>
+            <h3>Мины 5×5</h3>
+            <p>Открывай клетки, избегай мин. Чем больше мин — тем выше множитель!</p>
+            <span class="game-tag">💰 Множители до ×50</span>
+        </div>
+    </div>
+</section>
+
+<!-- Фичи -->
+<section id="features">
+    <div class="section-title">
+        <h2>⚡ Возможности</h2>
+        <p>Всё для крутого игрового опыта</p>
+    </div>
+    <div class="features-grid">
+        <div class="feature">
+            <div class="feature-icon">💰</div>
+            <div>
+                <h3>Коины и звёзды</h3>
+                <p>Пополняй баланс звёздами ⭐ и играй на коины 💰</p>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">👥</div>
+            <div>
+                <h3>Играй с друзьями</h3>
+                <p>Отправляй ссылку другу и играй вдвоём</p>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🏆</div>
+            <div>
+                <h3>Топ игроков</h3>
+                <p>Соревнуйся и попади в топ-10!</p>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🎁</div>
+            <div>
+                <h3>5% реферальный бонус</h3>
+                <p>Приглашай друзей и получай % с их пополнений</p>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">👑</div>
+            <div>
+                <h3>Магазин титулов</h3>
+                <p>Ниндзя, Король, Легенда — выделяйся!</p>
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🛡️</div>
+            <div>
+                <h3>Безопасность</h3>
+                <p>Все ставки защищены, возврат при сбое</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Как играть -->
+<section id="how">
+    <div class="section-title">
+        <h2>🎮 Как начать играть</h2>
+        <p>Всего 3 шага до первой победы</p>
+    </div>
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">1</div>
+            <h3>Открой бота</h3>
+            <p>Нажми /start и регистрируйся</p>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <h3>Пополни баланс</h3>
+            <p>Купи коины за звёзды ⭐</p>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <h3>Играй</h3>
+            <p>Выбирай игру и побеждай!</p>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<div class="cta">
+    <h2>Готов к победе? 🏆</h2>
+    <p>Нажми кнопку ниже и начни играть прямо сейчас!</p>
+</div>
+
+<!-- FAQ -->
+<section id="faq">
+    <div class="section-title">
+        <h2>❓ Частые вопросы</h2>
+    </div>
+    <div class="faq-list">
+        <div class="faq-item">
+            <div class="faq-q">Как начать играть?</div>
+            <div class="faq-a">Нажми кнопку «Играть» ниже — откроется бот, где можно выбрать любую игру.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Что такое коины 💰?</div>
+            <div class="faq-a">Игровая валюта бота. Покупается за звёзды ⭐, выигрывается в играх или через рефералов.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Как вывести выигрыш?</div>
+            <div class="faq-a">В разделе «Профиль» → «Вывод». Админ отправит тебе подарок Telegram со звёздами.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Можно ли играть с друзьями?</div>
+            <div class="faq-a">Да! Создай игру и поделись ссылкой. Друг перейдёт и вы начнёте играть.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Как работает реферальная программа?</div>
+            <div class="faq-a">Поделись своей ссылкой. За каждое пополнение друга ты получаешь 5% коинами.</div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <p class="copyright">© 2026 GameBot. Играй ответственно 🎲</p>
+</footer>
+
+<script>
+    // Telegram Web App
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    
+    // Адаптация под тему Telegram
+    if (tg.colorScheme === 'light') {
+        document.documentElement.style.setProperty('--darker', '#f5f5f7');
+        document.documentElement.style.setProperty('--dark', '#ffffff');
+        document.documentElement.style.setProperty('--text', '#1a1a1a');
+        document.documentElement.style.setProperty('--text-dim', '#666666');
+        document.documentElement.style.setProperty('--card', 'rgba(0, 0, 0, 0.03)');
+        document.documentElement.style.setProperty('--border', 'rgba(0, 0, 0, 0.1)');
+    }
+    
+    // Главная кнопка Telegram
+    tg.MainButton.setText('🚀 ИГРАТЬ В БОТА');
+    tg.MainButton.show();
+    tg.MainButton.onClick(() => {
+        // Открываем бота (или закрываем Mini App)
+        tg.close();
+    });
+    
+    // Звёзды на фоне
+    const starsContainer = document.getElementById('stars');
+    for (let i = 0; i < 60; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        const size = Math.random() * 3 + 1;
+        star.style.width = size + 'px';
+        star.style.height = size + 'px';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.top = Math.random() * 100 + '%';
+        star.style.animationDelay = Math.random() * 3 + 's';
+        starsContainer.appendChild(star);
+    }
+    
+    // FAQ аккордеон
+    document.querySelectorAll('.faq-item').forEach(item => {
+        item.querySelector('.faq-q').addEventListener('click', () => {
+            item.classList.toggle('active');
+        });
+    });
+    
+    // Haptic feedback при клике
+    document.querySelectorAll('.game-card, .faq-q').forEach(el => {
+        el.addEventListener('click', () => {
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        });
+    });
+</script>
+
+</body>
+</html>
